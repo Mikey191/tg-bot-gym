@@ -4,7 +4,6 @@ const UserController = require("./controller/user.controller");
 const startGymInlineKeyboard = require("./keyboards/startGymInlineKeyboard");
 const adminMenuInlineKeyboard = require("./keyboards/adminMenuInlineKeyboard");
 const createGroupListForDeleteInlineKeyboard = require("./keyboards/groupListForDeleteInlineKeyboard");
-const getListCallbacksGroups = require("./utils/querydb/listCallbacksGroups");
 
 const bot = new Bot(process.env.BOT_API_KEY);
 // Открытие сессии с переменными флагами для создания групп и упражнений
@@ -13,6 +12,7 @@ function initial() {
     waitingForResponseCreateGroup: null,
     waitingForResponseDeleteGroup: null,
     waitingForResponseCreateExercise: null,
+    listGroupsCallbacks: null,
   };
 }
 bot.use(session({ initial }));
@@ -23,7 +23,6 @@ bot.command("start", async (ctx) => {
     `Вас приветствует Бот для спортивного зала GymBot. С помощью меня вы можите создавать свои программы или воспользоваться уже созданными. Так же вы можите создавать свои группы мышц и упражнения для них. Для этого введите команду /startgym`
   );
 });
-
 // Открытие основного управления приложением
 bot.command("startgym", async (ctx) => {
   await ctx.reply(
@@ -64,16 +63,14 @@ bot.callbackQuery("/dgroup", async (ctx) => {
     reply_markup: await createGroupListForDeleteInlineKeyboard(),
   });
 });
-bot.callbackQuery(getListCallbacksGroups(), UserController.deleteGroup);
+bot.callbackQuery(session.listGroupsCallbacks, UserController.deleteGroup);
 
 //Создание упражнения
-bot.callbackQuery("/cexer", async (ctx) => {
-  ctx.session.waitingForResponseCreateExercise = true;
-  await ctx.reply(`Введите название упражнения:`);
-});
 
-// bot.on("msg", UserController.createExercises);
 
+
+
+// Обработчик ошибок
 bot.catch((err) => {
   const ctx = err.ctx;
   console.error(`Error while handling update ${ctx.update.update_id}:`);
@@ -87,5 +84,5 @@ bot.catch((err) => {
     console.error(`Unknown error:`, e);
   }
 });
-
+// Старт бота
 bot.start();

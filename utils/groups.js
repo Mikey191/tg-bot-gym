@@ -1,6 +1,4 @@
-export const groups = ["Chest", "Back", "Legs", "Hands", "Shoulders", "Abs"];
-
-export const groupsExercises = {
+const groupsExercises = {
   // Упражнения для груди
   groupChest: [
     "Жим штанги лёжа",
@@ -91,3 +89,5 @@ export const groupsExercises = {
     "Подъем ног в висе",
   ],
 };
+
+module.exports = groupsExercises;

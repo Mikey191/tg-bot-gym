@@ -1,10 +1,9 @@
 const db = require("../db");
 const adminMenuInlineKeyboard = require("../keyboards/adminMenuInlineKeyboard");
-const createInlineKeyboard = require("../keyboards/groupListInlineKeyboard");
+const createGroupListForDeleteInlineKeyboard = require("../keyboards/groupListForDeleteInlineKeyboard");
 
 class UserController {
   async createGroup(ctx) {
-    await ctx.answerCallbackQuery();
     try {
       if (ctx.session.waitingForResponseCreateGroup) {
         await db.query(`insert into groups (name) values ($1)`, [
@@ -21,34 +20,35 @@ class UserController {
       console.log(`Не смог добавить группу. `, error);
       ctx.reply(`Не смог добавить группу.`);
     } finally {
-      // Сбрасываем значение в сессии
       ctx.session.waitingForResponseCreateGroup = false;
+      await ctx.answerCallbackQuery();
     }
   }
-
-  async createExercises(ctx) {
-    if (ctx.session.waitingForResponseCreateExercise) {
-      ctx.session.waitingForResponseCreateGroup = false;
-    }
-    console.log(
-      `End od session: ${ctx.session.waitingForResponseCreateExercise}`
-    );
-  }
+  async createExercises(ctx) {}
   async createUser(ctx) {}
 
   async getGroups(ctx) {
+    try {
+      const groupsList = await (await db.query(`select * from groups`)).rows;
+      const groupListStr = groupsList.map((button) => button.name).join("\n");
+      console.log(groupListStr);
+      ctx.reply(`Список групп:\n${groupListStr}`);
+    } catch (error) {
+      console.log(`Ошибка при формировании списка групп`, error);
+      ctx.reply(`Ошибка формирования списка групп. Поробуйте еще раз.`);
+    }
     await ctx.answerCallbackQuery();
-    const groupsList = await (await db.query(`select * from groups`)).rows;
-    const groupListStr = groupsList.map((button) => button.name).join("\n");
-    console.log(groupListStr);
-    ctx.reply(`Список групп:\n${groupListStr}`);
   }
   async getExercises(ctx) {}
   async getUsers(ctx) {}
 
   async deleteGroup(ctx) {
     try {
-      console.log(ctx.callbackQuery.data);
+      ctx.session.listGroupsCallbacks = await createGroupListForDeleteInlineKeyboard();
+      console.log(
+        `ctx.session.listGroupsCallbacks: ${ctx.session.listGroupsCallbacks}`
+      );
+      console.log("delete group try: ", ctx.callbackQuery.data);
       await db.query(`delete from groups where name = $1`, [
         ctx.callbackQuery.data,
       ]);
@@ -60,7 +60,9 @@ class UserController {
       console.log(`Ошибка при удалении группы.`, error);
       ctx.reply(`Ошибка при удалении группы.`);
     } finally {
+      ctx.session.listGroupsCallbacks = null;
       ctx.session.waitingForResponseDeleteGroup = false;
+      console.log(ctx.session.waitingForResponseDeleteGroup);
     }
   }
   async deleteExercise(ctx) {}
