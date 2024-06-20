@@ -8,6 +8,6 @@ const adminMenuInlineKeyboard = new InlineKeyboard()
   .text("Удалить упражнение", "/dexer")
   .row()
   .text("Показать все группы", "/getgroups")
-  .text("Показать все упражнения", "/getexer");
+  .text("Показать упражнения", "/getexer");
 
 module.exports = adminMenuInlineKeyboard;

@@ -1,9 +1,12 @@
 require("dotenv").config();
 const { Bot, GrammyError, HttpError, session } = require("grammy");
-const UserController = require("./controller/user.controller");
+const AdminController = require("./controller/admin.controller");
 const startGymInlineKeyboard = require("./keyboards/startGymInlineKeyboard");
 const adminMenuInlineKeyboard = require("./keyboards/adminMenuInlineKeyboard");
-const createGroupListForDeleteInlineKeyboard = require("./keyboards/groupListForDeleteInlineKeyboard");
+const createGroupListInlineKeyboard = require("./keyboards/groupListDelete");
+const createGroupListAddExercise = require("./keyboards/groupListAddExercise");
+const callbacks = require("./utils/callbacks");
+const createGroupListGetExercise = require("./keyboards/groupListGetExercises");
 
 const bot = new Bot(process.env.BOT_API_KEY);
 // Открытие сессии с переменными флагами для создания групп и упражнений
@@ -12,7 +15,8 @@ function initial() {
     waitingForResponseCreateGroup: null,
     waitingForResponseDeleteGroup: null,
     waitingForResponseCreateExercise: null,
-    listGroupsCallbacks: null,
+    waitingForResponseDeleteExercise: null,
+    groupExercise: null,
   };
 }
 bot.use(session({ initial }));
@@ -44,31 +48,63 @@ bot.callbackQuery("/adminmenu", async (ctx) => {
   );
 });
 
+// Обработчик сообщений для создания группы или упражнения
+bot.on("msg", AdminController.createGroupExerciseMessageHandler);
+
+// Функции Админа для работы с группами - start
 //Создание группы
 bot.callbackQuery("/cgroup", async (ctx) => {
   await ctx.answerCallbackQuery();
   ctx.session.waitingForResponseCreateGroup = true;
   await ctx.reply(`Введите название группы:`);
 });
-bot.on("msg", UserController.createGroup, {
-  reply_markup: adminMenuInlineKeyboard,
-});
+bot.on("msg", AdminController.createGroup);
 //Показать все группы
-bot.callbackQuery("/getgroups", UserController.getGroups);
+bot.callbackQuery("/getgroups", AdminController.getGroups);
 //Удалить группу
 bot.callbackQuery("/dgroup", async (ctx) => {
   await ctx.answerCallbackQuery();
   ctx.session.waitingForResponseDeleteGroup = true;
-  await ctx.reply(`Выбирите группу для удаления:`, {
-    reply_markup: await createGroupListForDeleteInlineKeyboard(),
+  await ctx.reply(`Выбирите группу для удаления: `, {
+    reply_markup: await createGroupListInlineKeyboard(),
   });
 });
-bot.callbackQuery(session.listGroupsCallbacks, UserController.deleteGroup);
+bot.callbackQuery(/deletegroup/, AdminController.deleteGroup);
+// Функции Админа для работы с группами - end
 
-//Создание упражнения
-
-
-
+// Функции Админа для работы с упражнениями
+// Создание упражнения
+bot.callbackQuery("/cexer", async (ctx) => {
+  try {
+    ctx.session.waitingForResponseCreateExercise = true;
+    await ctx.reply(`Выберите группу для добавления в нее упражнения:`, {
+      reply_markup: await createGroupListAddExercise(),
+    });
+  } catch (error) {
+    console.log(error);
+    await ctx.reply(`Ошибка вывода групп`);
+  }
+});
+bot.callbackQuery(/createexercisegroup/, async (ctx) => {
+  ctx.session.groupExercise = ctx.callbackQuery.data.replace(
+    callbacks.createExerciseGroup,
+    ""
+  );
+  await ctx.reply(`Введите название упражнения:`);
+});
+// Показать все упражнения определенной группы
+bot.callbackQuery("/getexer", async (ctx) => {
+  try {
+    await ctx.reply(`Выберите группу упражнений:`, {
+      reply_markup: await createGroupListGetExercise(),
+    });
+  } catch (error) {
+    console.log(error);
+    await ctx.reply(`Ошибка вывода групп`);
+  }
+});
+bot.callbackQuery(/getgroupexercises/, AdminController.getExercises);
+// Удаление упражнения из определенной группы
 
 // Обработчик ошибок
 bot.catch((err) => {
