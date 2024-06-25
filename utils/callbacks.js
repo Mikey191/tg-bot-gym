@@ -3,6 +3,7 @@ const callbacks = {
   createExerciseGroup: "createexercisegroup",
   getGroupExercises: "getgroupexercises",
   deleteExerciseGroup: "deleteexercisegroup",
+  deleteExercise: "deleteexercise",
 };
 
 module.exports = callbacks;

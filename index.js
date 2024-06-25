@@ -1,4 +1,5 @@
 require("dotenv").config();
+const db = require("./db");
 const { Bot, GrammyError, HttpError, session } = require("grammy");
 const AdminController = require("./controller/admin.controller");
 const startGymInlineKeyboard = require("./keyboards/startGymInlineKeyboard");
@@ -7,6 +8,8 @@ const createGroupListInlineKeyboard = require("./keyboards/groupListDelete");
 const createGroupListAddExercise = require("./keyboards/groupListAddExercise");
 const callbacks = require("./utils/callbacks");
 const createGroupListGetExercise = require("./keyboards/groupListGetExercises");
+const createGroupListDeleteExercise = require("./keyboards/groupListDeleteExercise");
+const createExerciseListDelete = require("./keyboards/exercisesListDelete");
 
 const bot = new Bot(process.env.BOT_API_KEY);
 // Открытие сессии с переменными флагами для создания групп и упражнений
@@ -41,7 +44,7 @@ bot.command("startgym", async (ctx) => {
 bot.callbackQuery("/adminmenu", async (ctx) => {
   await ctx.answerCallbackQuery();
   await ctx.reply(
-    `Вы вошли в режим админа.\nТут вы можете:\n - создавать свои "Группы Мыщц"\n- создавать свои "Упражнения для группы"\n- удалять уже существующие "Группы Мыщц"\n- удалять уже существующие "Упражнения для группы"`,
+    `Вы вошли в режим админа.\nТут вы можете:\n- создавать свои "Группы Мыщц"\n- создавать свои "Упражнения для группы"\n- удалять уже существующие "Группы Мыщц"\n- удалять уже существующие "Упражнения для группы"`,
     {
       reply_markup: adminMenuInlineKeyboard,
     }
@@ -58,7 +61,6 @@ bot.callbackQuery("/cgroup", async (ctx) => {
   ctx.session.waitingForResponseCreateGroup = true;
   await ctx.reply(`Введите название группы:`);
 });
-bot.on("msg", AdminController.createGroup);
 //Показать все группы
 bot.callbackQuery("/getgroups", AdminController.getGroups);
 //Удалить группу
@@ -95,9 +97,12 @@ bot.callbackQuery(/createexercisegroup/, async (ctx) => {
 // Показать все упражнения определенной группы
 bot.callbackQuery("/getexer", async (ctx) => {
   try {
-    await ctx.reply(`Выберите группу упражнений:`, {
-      reply_markup: await createGroupListGetExercise(),
-    });
+    await ctx.reply(
+      `Выберите группу упражнений для просмотра упражнений в ней:`,
+      {
+        reply_markup: await createGroupListGetExercise(),
+      }
+    );
   } catch (error) {
     console.log(error);
     await ctx.reply(`Ошибка вывода групп`);
@@ -105,6 +110,49 @@ bot.callbackQuery("/getexer", async (ctx) => {
 });
 bot.callbackQuery(/getgroupexercises/, AdminController.getExercises);
 // Удаление упражнения из определенной группы
+bot.callbackQuery("/dexer", async (ctx) => {
+  try {
+    await ctx.reply(`Выберите группу для удаления из нее упражнения:`, {
+      reply_markup: await createGroupListDeleteExercise(),
+    });
+  } catch (error) {
+    console.log(error);
+    await ctx.reply(`Ошибка вывода групп`);
+  }
+});
+bot.callbackQuery(/deleteexercisegroup/, async (ctx) => {
+  try {
+    ctx.session.groupExercise = ctx.callbackQuery.data.replace(
+      callbacks.deleteExerciseGroup,
+      ""
+    );
+    await ctx.reply(`Выбирите упражнение, которое хотите удалить:`, {
+      reply_markup: await createExerciseListDelete(ctx),
+    });
+  } catch (error) {
+    console.log(error);
+    await ctx.reply(`Ошибка вывода упражнений`);
+  }
+});
+bot.callbackQuery(/deleteexercise/, async (ctx) => {
+  try {
+    const nameGroup = ctx.session.groupExercise;
+    const nameExercise = ctx.callbackQuery.data.replace(
+      callbacks.deleteExercise,
+      ""
+    );
+    await db.query(`delete from exercises where name = $1 and namegroup = $2`, [
+      nameExercise,
+      nameGroup,
+    ]);
+    ctx.reply(`Упражнение ${nameExercise} удалено из группы ${nameGroup}`, {
+      reply_markup: adminMenuInlineKeyboard,
+    });
+  } catch (error) {
+    console.log(`Ошибка удаления упражнения`, error);
+    await ctx.reply(`Ошибка удаления упражнения`);
+  }
+});
 
 // Обработчик ошибок
 bot.catch((err) => {
