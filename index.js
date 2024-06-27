@@ -11,6 +11,8 @@ const createGroupListGetExercise = require("./keyboards/groupListGetExercises");
 const createGroupListDeleteExercise = require("./keyboards/groupListDeleteExercise");
 const createExerciseListDelete = require("./keyboards/exercisesListDelete");
 
+const AdminBotController = require("./controller/adminBot.controller");
+
 const bot = new Bot(process.env.BOT_API_KEY);
 // Открытие сессии с переменными флагами для создания групп и упражнений
 function initial() {
@@ -52,25 +54,18 @@ bot.callbackQuery("/adminmenu", async (ctx) => {
 });
 
 // Обработчик сообщений для создания группы или упражнения
-bot.on("msg", AdminController.createGroupExerciseMessageHandler);
+bot.on("msg", AdminBotController.msgHandler);
 
 // Функции Админа для работы с группами - start
 //Создание группы
-bot.callbackQuery("/cgroup", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  ctx.session.waitingForResponseCreateGroup = true;
-  await ctx.reply(`Введите название группы:`);
-});
+bot.callbackQuery("/cgroup", AdminBotController.groups.createGroup.stepOne);
 //Показать все группы
-bot.callbackQuery("/getgroups", AdminController.getGroups);
+bot.callbackQuery(
+  "/getgroups",
+  AdminBotController.groups.showAllGroups.stepOne
+);
 //Удалить группу
-bot.callbackQuery("/dgroup", async (ctx) => {
-  await ctx.answerCallbackQuery();
-  ctx.session.waitingForResponseDeleteGroup = true;
-  await ctx.reply(`Выбирите группу для удаления: `, {
-    reply_markup: await createGroupListInlineKeyboard(),
-  });
-});
+bot.callbackQuery("/dgroup", AdminBotController.groups.deleteGroup.stepOne);
 bot.callbackQuery(/deletegroup/, AdminController.deleteGroup);
 // Функции Админа для работы с группами - end
 

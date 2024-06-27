@@ -91,6 +91,9 @@ class AdminController {
   async deleteGroup(ctx) {
     try {
       console.log("delete group try: ", ctx.callbackQuery.data);
+      // Удалить все упражнения, которые относяться к этой группе
+
+      // Потом удалить саму группу
       await db.query(`delete from groups where name = $1`, [
         ctx.callbackQuery.data.replace(callbacks.deleteGroup, ""),
       ]);
