@@ -1,4 +1,4 @@
-const groupsExercises = {
+const groupsAndExercises = {
   // Упражнения для груди
   groupChest: [
     "Жим штанги лёжа",
@@ -90,4 +90,4 @@ const groupsExercises = {
   ],
 };
 
-module.exports = groupsExercises;
+module.exports = groupsAndExercises;

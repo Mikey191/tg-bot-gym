@@ -1,16 +1,15 @@
 const { InlineKeyboard } = require("grammy");
-const db = require("../../db");
+const db = require("../../database/db");
 
 // Класс для создания inline keyboard списка групп для разных фаз
 class InlineKeyboardGroupList {
   constructor() {
     //Колбэки для создания инлайн клавиатур
-    const callbacks = {
+    this.callbacks = {
       createExerciseGroup: "createexercisegroup",
       getGroupExercises: "getgroupexercises",
       deleteGroup: "deletegroup",
       deleteExerciseGroup: "deleteexercisegroup",
-      deleteExercise: "deleteexercise",
     };
     // Создание списка групп
     async function createGroupList(callback) {
@@ -20,7 +19,7 @@ class InlineKeyboardGroupList {
         groupListInlineKeyboard
           .text(
             button.name.toString().trim(),
-            callback + button.name.toString().trim()
+            (callback + button.name.toString().trim()).slice(0, 40)
           )
           .row();
       }
@@ -28,19 +27,19 @@ class InlineKeyboardGroupList {
     }
     // клавиатура списка групп для удаления группы
     this.inlineKeyboardGroupForDeleteGroup = async function () {
-      return createGroupList(callbacks.deleteGroup);
+      return createGroupList(this.callbacks.deleteGroup);
     };
     // клавиатура списка групп для удаления упражнения из определенной группы
     this.inlineKeyboardGroupForDeleteExercise = async function () {
-      return createGroupList(callbacks.deleteExerciseGroup);
+      return createGroupList(this.callbacks.deleteExerciseGroup);
     };
     // клавиатура списка групп для показа упражнений определенной группы
     this.inlineKeyboardGroupForGetGroupExercise = async function () {
-      return createGroupList(callbacks.getGroupExercises);
+      return createGroupList(this.callbacks.getGroupExercises);
     };
     // клавиатура списка групп для создания в ней упражнения
     this.inlineKeyboardGroupForCreateExercise = async function () {
-      return createGroupList(callbacks.createExerciseGroup);
+      return createGroupList(this.callbacks.createExerciseGroup);
     };
   }
 }

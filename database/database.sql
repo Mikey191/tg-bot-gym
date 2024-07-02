@@ -7,6 +7,7 @@ CREATE TABLE exercises (
  name VARCHAR(255) NOT NULL,
  namegroup VARCHAR(255) NOT NULL,
  FOREIGN KEY (namegroup) REFERENCES groups (name)
+ CONSTRAINT exercises_name_namegroup_unique UNIQUE (name, namegroup)
 )
 CREATE TABLE users (
  id SERIAL PRIMARY KEY,
