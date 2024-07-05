@@ -10,18 +10,28 @@ class InlineKeyboardGroupList {
       getGroupExercises: "getgroupexercises",
       deleteGroup: "deletegroup",
       deleteExerciseGroup: "deleteexercisegroup",
+      startTrainingGroup: "stgroup",
     };
     // Создание списка групп
     async function createGroupList(callback) {
       const groups = await db.query(`select * from groups`);
       const groupListInlineKeyboard = new InlineKeyboard();
+      let countRow = 0;
       for (const button of groups.rows) {
-        groupListInlineKeyboard
-          .text(
+        if (countRow % 2 == 0) {
+          groupListInlineKeyboard.text(
             button.name.toString().trim(),
             (callback + button.name.toString().trim()).slice(0, 40)
-          )
-          .row();
+          );
+        } else {
+          groupListInlineKeyboard
+            .text(
+              button.name.toString().trim(),
+              (callback + button.name.toString().trim()).slice(0, 40)
+            )
+            .row();
+        }
+        countRow += 1;
       }
       return groupListInlineKeyboard;
     }
@@ -41,6 +51,10 @@ class InlineKeyboardGroupList {
     this.inlineKeyboardGroupForCreateExercise = async function () {
       return createGroupList(this.callbacks.createExerciseGroup);
     };
+    // клавиатура списка групп для начала тренировки
+    this.inlineKeyboardGroupForStartTraning = async function () {
+      return createGroupList(this.callbacks.startTrainingGroup);
+    }
   }
 }
 

@@ -5,9 +5,11 @@ class InlineKeyboardExerciseList {
   constructor() {
     this.callbacks = {
       deleteExercise: "deleteexercise",
+      startTrainingExercise: "starttrainingexercise",
     };
 
     async function createExerciseList(ctx, callback) {
+      // console.log(ctx.callbackQuery);
       const exercises = await db.query(
         `select name from exercises where namegroup = $1`,
         [ctx.session.groupExercise]
@@ -26,6 +28,10 @@ class InlineKeyboardExerciseList {
     // клавиатура списка упражнений для удаления упражнения
     this.inlineKeyboardExerciseForDeleteExercise = async function (ctx) {
       return createExerciseList(ctx, this.callbacks.deleteExercise);
+    };
+    // Клавиатура списка упражнений для старта тренировки
+    this.inlineKeyboardExerciseForStartTraining = async function (ctx) {
+      return createExerciseList(ctx, this.callbacks.startTrainingExercise);
     };
   }
 }

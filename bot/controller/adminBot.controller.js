@@ -1,4 +1,5 @@
 const db = require("../../database/db");
+const groupsAndExercises = require("../../database/groupsAndExercises");
 const adminMenuInlineKeyboard = require("../../keyboards/adminMenuInlineKeyboard");
 const InlineKeyboardGroupList = require("../../keyboards/inlineKeyboards/InlineKeyboardGroupList");
 const inlineKeyboardExerciseList = require("../../keyboards/inlineKeyboards/inlineKeyboardExerciseList");
@@ -37,13 +38,20 @@ class AdminBotController {
         // Шаг 1
         async stepOne(ctx) {
           try {
-            const groupsList = await (
-              await db.query(`select * from groups`)
-            ).rows;
-            const groupListStr = groupsList
-              .map((button) => button.name)
-              .join("\n");
-            ctx.reply(`Список групп:\n${groupListStr}`);
+            const req = await db.query(`select count(*) from groups`);
+            const groupsCount = +req.rows[0].count;
+            // Проверка на пустоту в таблице groups
+            if (groupsCount) {
+              const groupsList = await (
+                await db.query(`select * from groups`)
+              ).rows;
+              const groupListStr = groupsList
+                .map((button) => button.name)
+                .join("\n");
+              ctx.reply(`Список групп:\n${groupListStr}`);
+            } else {
+              await ctx.reply(`Список групп пуст.`);
+            }
           } catch (error) {
             console.log(`Ошибка списка групп`, error);
             ctx.reply(`Ошибка списка групп. Поробуйте еще раз.`);
@@ -104,8 +112,61 @@ class AdminBotController {
       },
       // Загрузка всех групп и упражнений из /database/groupsAndExercises.js
       loadGroupsAndExercises: {
-        async stepOne(ctx) {},
+        async stepOne(ctx) {
+          try {
+            // Проверка таблицы Groups на пустоту. Если она пустая - загрузка возможна, в противном случае сообщение о том, что таблица не пустая.
+            const res = await db.query(`select count(*) from groups`);
+            const isempty = +res.rows[0].count;
+            if (isempty) {
+              await ctx.reply(
+                `Таблица не пустая. Очистите таблицы и повторите попытку.`
+              );
+            } else {
+              Object.entries(groupsAndExercises).forEach(
+                async ([key, value]) => {
+                  // Записываем группу
+                  await db.query(`insert into groups (name) values ($1)`, [
+                    key,
+                  ]);
+                  value.forEach(async (item) => {
+                    // Записываем упражнение
+                    await db.query(
+                      `insert into exercises (name, namegroup) values ($1, $2)`,
+                      [item, key]
+                    );
+                    console.log(`${key}: ${item}`);
+                  });
+                }
+              );
+              await ctx.reply(
+                "Группы мышц и упражнения загружены. Можете приступать к тренировкам."
+              );
+            }
+          } catch (error) {
+            console.log(`Ошибка загрузки групп и упражнений`, error);
+            await ctx.reply(`Ошибка загрузки групп и упражнений`);
+          } finally {
+            await ctx.answerCallbackQuery();
+          }
+        },
       },
+      // Удаление всех групп и упражнений из БД
+      deleteGroupsAndExercises: {
+        async stepOne(ctx){
+          try {
+            // Удаляем упражнения
+            await db.query(`delete from exercises`);
+            // Удаляем группы
+            await db.query(`delete from groups`);
+            await ctx.reply(`Группы и Упражнения удалены`);
+          } catch (error) {
+            console.log(`Ошибка удаления групп и упражнений`, error);
+            await ctx.reply(`Ошибка удаления групп и упражнений`);
+          } finally {
+            await ctx.answerCallbackQuery();
+          }
+        }
+      }
     };
 
     // Работа с упражнениями
@@ -165,7 +226,6 @@ class AdminBotController {
           } finally {
             ctx.session.waitingForResponseCreateExercise = false;
             ctx.session.groupExercise = null;
-            await ctx.answerCallbackQuery();
           }
         },
       },
@@ -173,13 +233,19 @@ class AdminBotController {
         // Шаг 1 для показа всех упражнений определенной группы
         async stepOne(ctx) {
           try {
-            await ctx.reply(
-              `Выберите группу упражнений для просмотра упражнений в ней:`,
-              {
-                reply_markup:
-                  await InlineKeyboardGroupList.inlineKeyboardGroupForGetGroupExercise(),
-              }
-            );
+            const res = await db.query(`select count(*) from exercises`);
+            const exercisesCount = +res.rows[0].count;
+            if (exercisesCount) {
+              await ctx.reply(
+                `Выберите группу упражнений для просмотра упражнений в ней:`,
+                {
+                  reply_markup:
+                    await InlineKeyboardGroupList.inlineKeyboardGroupForGetGroupExercise(),
+                }
+              );
+            } else {
+              await ctx.reply(`Список упражнений пуст.`);
+            }
           } catch (error) {
             console.log(error);
             await ctx.reply(`Ошибка вывода групп`);
@@ -194,12 +260,19 @@ class AdminBotController {
               InlineKeyboardGroupList.callbacks.getGroupExercises,
               ""
             );
-            const exercisesList = await db.query(
-              `select name from exercises where namegroup = $1`,
+
+            // Найти все упражнения в группе мышц. Если равна 0 - сообщение что нет упражнений в группе
+            const res = await db.query(
+              `select count(*) from exercises where namegroup = $1`,
               [nameGroup]
             );
-            console.log(exercisesList.rows);
-            if (exercisesList.rows) {
+            const exercisesCount = +res.rows[0].count;
+
+            if (exercisesCount) {
+              const exercisesList = await db.query(
+                `select name from exercises where namegroup = $1`,
+                [nameGroup]
+              );
               const exercisesListStr = exercisesList.rows
                 .map((exercise) => exercise.name)
                 .join("\n");
@@ -207,7 +280,7 @@ class AdminBotController {
                 `Список упражнений для группы ${nameGroup}:\n${exercisesListStr}`
               );
             } else {
-              await ctx.reply(`Список упражнений пуст...`);
+              await ctx.reply(`Список упражнений в группе ${nameGroup} пуст.`);
             }
           } catch (error) {
             console.log(`Ошибка при формировании списка упражнений`, error);
