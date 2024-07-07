@@ -6,11 +6,17 @@ function initialSession() {
     waitingForResponseDeleteExercise: null,
     waitingForResponseCreateWight: null,
     waitingForResponseCreateCountEx: null,
+    waitingForResponseCreateDate: null,
     groupExercise: null,
     groupForTraningExercise: null,
     exerciseForTraining: null,
     exerciseWight: null,
     exerciseCount: null,
+    // Статистика
+    statisticToday: null,
+    statisticDay: null,
+    statisticMonth: null,
+    statisticRange: null,
   };
 }
 

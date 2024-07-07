@@ -1,32 +1,7 @@
 const { InlineKeyboard } = require("grammy");
 const AdminBotController = require("./adminBot.controller");
 const db = require("../../database/db");
-
-function convertDate(message_date) {
-  const date = new Date(message_date * 1000);
-  return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
-}
-
-const exerciseEnd = new InlineKeyboard()
-  .text("Повторить подход", "starttrainingexercise")
-  .row()
-  .text("Начать новое упражнение", "/starttraining")
-  .row()
-  .text("Закончить тренировку", "/usermenu");
-
-function reseteSessionInitial(ctx) {
-  ctx.session.waitingForResponseCreateGroup = null;
-  ctx.session.waitingForResponseDeleteGroup = null;
-  ctx.session.waitingForResponseCreateExercise = null;
-  ctx.session.waitingForResponseDeleteExercise = null;
-  ctx.session.waitingForResponseCreateWight = null;
-  ctx.session.waitingForResponseCreateCountEx = null;
-  ctx.session.groupExercise = null;
-  ctx.session.groupForTraningExercise = null;
-  ctx.session.exerciseForTraining = null;
-  ctx.session.exerciseWight = null;
-  ctx.session.exerciseCount = null;
-}
+const userBotController = require("./userBot.controller");
 
 class MsgController {
   constructor() {
@@ -38,38 +13,34 @@ class MsgController {
         //создание упражнения
         await AdminBotController.exercises.createExercise.stepThree(ctx);
       } else if (ctx.session.waitingForResponseCreateWight) {
-        // создание веса в упражнении
-        const weight = +ctx.message?.text;
-        ctx.session.exerciseWight = weight;
-        ctx.reply(`Введите количество повторений:`);
-        ctx.session.waitingForResponseCreateCountEx = true;
-        ctx.session.waitingForResponseCreateWight = false;
+        // создание веса снаряда в упражнении
+        await userBotController.workout.workoutProcess.stepFive(ctx);
       } else if (ctx.session.waitingForResponseCreateCountEx) {
-        // Список всех нужных переменных
+        // Создание повторений упражнения и запись в базу данных
+        await userBotController.workout.workoutProcess.stepSix(ctx);
+      } else if (ctx.session.waitingForResponseCreateDate) {
+        // создание даты для вывода статистики за этот день
+        const date = ctx.message.text;
+        console.log("Дата: ", date);
         const telegram_id = ctx.message.from.id;
-        const date = convertDate(ctx.message.date);
-        const group_name = ctx.session.groupExercise;
-        const exercises_name = ctx.session.exerciseForTraining;
-        const count = +ctx.message.text;
-        const weight = +ctx.session.exerciseWight;
-        // Запись в БД
-        await db.query(
-          `insert into result_table (telegram_id, date, group_name, exercises_name, count, weight) values ($1,$2,$3,$4,$5,$6)`,
-          [telegram_id, date, group_name, exercises_name, count, weight]
+        console.log("telegram_id = ", telegram_id);
+        // console.log(date.getDate(), date.getMonth() + 1, date.getFullYear());
+        // Запрос к БД с определенной датой
+        const res = await db.query(
+          `select * from result_table where date = $1 and telegram_id = $2`,
+          [date, telegram_id]
         );
-        // Сообщение пользователю
-        ctx.reply(
-          `Данные записаны!\ntelegram_id - ${telegram_id}\ndate - ${date}\ngroup_name - ${group_name}\nexercises_name - ${exercises_name}\ncount - ${count}\nweight - ${weight}\nЧТО ДАЛЬШЕ?
-          `,
-          {
-            reply_markup: exerciseEnd,
-          }
-        );
-        // Обнуление сессии
-        reseteSessionInitial(ctx);
-        // оставить старые значения если пользователь захочет продолжить
-        ctx.session.groupExercise = group_name;
-        ctx.session.exerciseForTraining = exercises_name;
+        // console.log(res.rows);
+        let result = "";
+        res.rows.forEach((item) => {
+          result += `Группа мышц: ${item.group_name};\n`;
+          result += `Упражнение: ${item.exercises_name}\n`;
+          result += `Количество повторений: ${item.count}\n`;
+          result += `Вес снаряда: ${item.weight}\n`;
+          result += `\n`;
+        });
+        console.log(result);
+        ctx.reply(`${result}`);
       } else {
         ctx.reply(`Не понимаю команды. Попробуй снова!`);
       }

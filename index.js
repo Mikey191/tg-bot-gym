@@ -1,23 +1,13 @@
 require("dotenv").config();
-const {
-  session,
-  InlineKeyboard,
-  BotError,
-  GrammyError,
-  HttpError,
-} = require("grammy");
-const startGymInlineKeyboard = require("./keyboards/startGymInlineKeyboard");
-const adminMenuInlineKeyboard = require("./keyboards/adminMenuInlineKeyboard");
+const { session, InlineKeyboard } = require("grammy");
 const AdminBotController = require("./bot/controller/adminBot.controller");
 const MainMenu = require("./bot/controller/mainMenu.controller");
 const bot = require("./bot/bot");
 const botError = require("./bot/bot.error");
 const initial = require("./bot/bot.initial.session");
-const groupsAndExercises = require("./database/groupsAndExercises");
 const db = require("./database/db");
-const InlineKeyboardGroupList = require("./keyboards/inlineKeyboards/InlineKeyboardGroupList");
-const inlineKeyboardExerciseList = require("./keyboards/inlineKeyboards/inlineKeyboardExerciseList");
 const MsgController = require("./bot/controller/msg.controller");
+const UserBotController = require("./bot/controller/userBot.controller");
 
 // Открытие сессии с переменными флагами для создания групп и упражнений
 bot.use(session({ initial }));
@@ -94,64 +84,23 @@ bot.callbackQuery(
 // Функции Админа для работы с упражнениями - end
 
 // Функции Пользователя для проведения тренировки - start
-// Инлайн клавиатура для начала тренировки
-const userStartTrainInlineKeyboard = new InlineKeyboard()
-  .text("Начать тренировку", "/starttraining")
-  .row()
-  .text("Моя статистика", "statistics");
-// Инлайн клавиатура для ввода веса
 // Начать тренировку
-bot.callbackQuery("/usermenu", async (ctx) => {
-  ctx.reply(`Начните тренировку нажав на кнопку:`, {
-    reply_markup: userStartTrainInlineKeyboard,
-  });
-});
-// Выбрать группу мышц для тенировки stepOne
-bot.callbackQuery("/starttraining", async (ctx) => {
-  ctx.reply(`Выбирите группу мышц которую будите тренировать:`, {
-    reply_markup:
-      await InlineKeyboardGroupList.inlineKeyboardGroupForStartTraning(),
-  });
-});
-// Выбрать упражнение из группы мыщц для тренировки stepTwo
-bot.callbackQuery(/stgroup/, async (ctx) => {
-  try {
-    ctx.session.groupExercise = ctx.callbackQuery.data.replace(
-      InlineKeyboardGroupList.callbacks.startTrainingGroup,
-      ""
-    );
-    // console.log(ctx.session);
-    const iKeyboard =
-      await inlineKeyboardExerciseList.inlineKeyboardExerciseForStartTraining(
-        ctx
-      );
-    ctx.reply("Выбирите упражнение", {
-      reply_markup: iKeyboard,
-    });
-  } catch (error) {
-    console.log(error);
-    await ctx.reply(`Ошибка вывода упражнений`);
-  } finally {
-    await ctx.answerCallbackQuery();
-  }
-});
-// Запросить вес упражнения
-bot.callbackQuery(/starttrainingexercise/, async (ctx) => {
-  // Записать упражнение
-  ctx.session.exerciseForTraining = ctx.callbackQuery.data.replace(
-    inlineKeyboardExerciseList.callbacks.startTrainingExercise,
-    ""
-  );
-  // Изменение состояния
-  ctx.reply(`Введите вес снаряда`);
-  ctx.session.waitingForResponseCreateWight = true;
-});
+bot.callbackQuery("/usermenu", UserBotController.workout.workoutProcess.stepOne);
+// Выбрать группу мышц для тенировки
+bot.callbackQuery("/starttraining", UserBotController.workout.workoutProcess.stepTwo);
+// Выбрать упражнение из группы мыщц для тренировки
+bot.callbackQuery(/stgroup/, UserBotController.workout.workoutProcess.stepThree);
+// Запрос на введение веса снаряда
+bot.callbackQuery(/starttrainingexercise/, UserBotController.workout.workoutProcess.stepFour);
+// Переход в msg handler.
 // Функции Пользователя для проведения тренировки - end
 
 // Функции Для вывода статистики Пользователя из результирующей таблицы - start
 // Клавиатура для уточняющей статистики
 const inlineKeyboardStatistics = new InlineKeyboard()
   .text("Статистика сегодня", "tstatistics")
+  .row()
+  .text("Статистика за определенный день", "dstatistic")
   .row()
   .text("Статистика за месяц", "mstatistics")
   .row()
@@ -167,7 +116,7 @@ bot.callbackQuery("statistics", async (ctx) => {
     reply_markup: inlineKeyboardStatistics,
   });
 });
-// Статистика за день
+// Статистика за сегодняшний день
 bot.callbackQuery("tstatistics", async (ctx) => {
   console.log("Статистика сегодня");
   // Дата Сегодня
@@ -179,12 +128,27 @@ bot.callbackQuery("tstatistics", async (ctx) => {
     `select * from result_table where date = $1 and telegram_id = $2`,
     [date, telegram_id]
   );
-  // Сформировать список(можно не список) с уникальными упражнениями 
-  console.log(res.rows);
+  // Сформировать список(можно не список) с уникальными упражнениями
+  console.log(res.rows[0]);
 });
+// Статистика за определенный день
+bot.callbackQuery("dstatistic", async (ctx) => {
+  console.log(`Статистика за определенную дату`);
+  ctx.reply(
+    `Статистика за определенный день.\nВведите Дату в формате дд.мм.гггг:`
+  );
+  ctx.session.waitingForResponseCreateDate = true;
+});
+
 // Статистика за месяц
+bot.callbackQuery("mstatistics", async (ctx) => {
+  ctx.reply("Ваша Статистика за месяц.");
+});
 
 // Статистика за период
+bot.callbackQuery("rstatistics", async (ctx) => {
+  ctx.reply(`Статистика за период`);
+});
 
 // Функции Для вывода статистики Пользователя из результирующей таблицы - end
 
