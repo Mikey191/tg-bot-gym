@@ -25,20 +25,38 @@ class MsgController {
         const telegram_id = ctx.message.from.id;
         console.log("telegram_id = ", telegram_id);
         // console.log(date.getDate(), date.getMonth() + 1, date.getFullYear());
-        // Запрос к БД с определенной датой
+        // Запрос к БД с определенной датой. Список всех упражнений в эту дату
         const res = await db.query(
           `select * from result_table where date = $1 and telegram_id = $2`,
           [date, telegram_id]
         );
-        // console.log(res.rows);
+        // Результирующая строка, которую будет видеть пользователь
         let result = "";
-        res.rows.forEach((item) => {
-          result += `Группа мышц: ${item.group_name};\n`;
-          result += `Упражнение: ${item.exercises_name}\n`;
-          result += `Количество повторений: ${item.count}\n`;
-          result += `Вес снаряда: ${item.weight}\n`;
-          result += `\n`;
+        // Создание сета из упражнений
+        let exercisesSet = new Set();
+        const dayAllExercise = res.rows;
+        dayAllExercise.forEach((item) => {
+          exercisesSet.add(item.exercises_name);
         });
+        // Создание списка из сета потому что его легче использовать
+        const exercisesList = [...exercisesSet];
+        console.log(exercisesList);
+        // Проходим циклом по списку упражнений
+        for (let i = 0; i < exercisesList.length; i++) {
+          // Проверка на пустоту
+          if (exercisesList[i]) {
+            result += `Упражнение ${exercisesList[i]}:\n`;
+            // Проходим циклом и ищем упражнения в БД
+            // Счетчик для подсчета упражнений
+            let countExercise = 0;
+            for (let j = 0; j < dayAllExercise.length; j++) {
+              if (exercisesList[i] === dayAllExercise[j].exercises_name) {
+                countExercise++;
+                result += `\t\t\t${countExercise} подход: ${dayAllExercise[i].count} повторений по ${dayAllExercise[i].weight}\n`;
+              }
+            }
+          }
+        }
         console.log(result);
         ctx.reply(`${result}`);
       } else {

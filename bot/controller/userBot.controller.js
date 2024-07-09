@@ -5,6 +5,7 @@ const convertDate = require("../../utils/convertDate");
 const reseteSessionInitial = require("../bot.initial.resete");
 const db = require("../../database/db");
 const endExercises = require("../../keyboards/endExercises");
+const groupsAndExercises = require("../../database/groupsAndExercises");
 
 class UserBotController {
   constructor() {
@@ -55,11 +56,17 @@ class UserBotController {
         // Записать упражнение в сессию и запросить ввод веса снаряда
         async stepFour(ctx) {
           if (!ctx.session.exerciseForTraining) {
-            // Записать упражнение которое выбрали в глобальную сессию если этого состояния нет
-            ctx.session.exerciseForTraining = ctx.callbackQuery.data.replace(
+            const exerciseWithoutEnd = ctx.callbackQuery.data.replace(
               inlineKeyboardExerciseList.callbacks.startTrainingExercise,
               ""
             );
+            const groupName = ctx.session.groupExercise;
+            // let exerciseFullName = '';
+            groupsAndExercises[groupName].forEach((item) => {
+              if (item.startsWith(exerciseWithoutEnd)) {
+                ctx.session.exerciseForTraining = item;
+              }
+            });
           }
           // Запрос на введение веса снаряда
           ctx.reply(`Введите вес снаряда`);
@@ -109,7 +116,11 @@ class UserBotController {
     };
     // Работа со статистикой
     this.statistic = {
-      userStatistic: {},
+      async statisticMenu(ctx) {},
+      async statisticToday(ctx) {},
+      async statisticDay(ctx) {},
+      async statisticMonth(ctx) {},
+      async statisticRange(ctx) {},
     };
   }
 }
