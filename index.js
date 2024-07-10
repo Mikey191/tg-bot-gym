@@ -8,6 +8,7 @@ const initial = require("./bot/bot.initial.session");
 const db = require("./database/db");
 const MsgController = require("./bot/controller/msg.controller");
 const UserBotController = require("./bot/controller/userBot.controller");
+const statisticController = require("./bot/controller/statistic.controller");
 
 // Открытие сессии с переменными флагами для создания групп и упражнений
 bot.use(session({ initial }));
@@ -85,68 +86,53 @@ bot.callbackQuery(
 
 // Функции Пользователя для проведения тренировки - start
 // Начать тренировку
-bot.callbackQuery("/usermenu", UserBotController.workout.workoutProcess.stepOne);
+bot.callbackQuery(
+  "/usermenu",
+  UserBotController.workout.workoutProcess.stepOne
+);
 // Выбрать группу мышц для тенировки
-bot.callbackQuery("/starttraining", UserBotController.workout.workoutProcess.stepTwo);
+bot.callbackQuery(
+  "/starttraining",
+  UserBotController.workout.workoutProcess.stepTwo
+);
 // Выбрать упражнение из группы мыщц для тренировки
-bot.callbackQuery(/stgroup/, UserBotController.workout.workoutProcess.stepThree);
+bot.callbackQuery(
+  /stgroup/,
+  UserBotController.workout.workoutProcess.stepThree
+);
 // Запрос на введение веса снаряда
-bot.callbackQuery(/starttrainingexercise/, UserBotController.workout.workoutProcess.stepFour);
+bot.callbackQuery(
+  /starttrainingexercise/,
+  UserBotController.workout.workoutProcess.stepFour
+);
 // Переход в msg handler.
 // Функции Пользователя для проведения тренировки - end
 
 // Функции Для вывода статистики Пользователя из результирующей таблицы - start
-// Клавиатура для уточняющей статистики
-const inlineKeyboardStatistics = new InlineKeyboard()
-  .text("Статистика сегодня", "tstatistics")
-  .row()
-  .text("Статистика за определенный день", "dstatistic")
-  .row()
-  .text("Статистика за месяц", "mstatistics")
-  .row()
-  .text("Статистика за период", "rstatistics");
-// Функция для конвертации даты
-function convertDate(message_date) {
-  const date = new Date(message_date * 1000);
-  return `${date.getDate()}.${date.getMonth() + 1}.${date.getFullYear()}`;
-}
-
-bot.callbackQuery("statistics", async (ctx) => {
-  ctx.reply(`Ваша статистика подгатавливается...`, {
-    reply_markup: inlineKeyboardStatistics,
-  });
-});
+bot.callbackQuery(
+  "statistics",
+  statisticController.statisticUser.statisticMenu.stepOne
+);
 // Статистика за сегодняшний день
-bot.callbackQuery("tstatistics", async (ctx) => {
-  console.log("Статистика сегодня");
-  // Дата Сегодня
-  const date = convertDate(ctx.callbackQuery.message.date);
-  // id пользователя
-  const telegram_id = ctx.from.id;
-  // Запрос к БД что бы вытащить все строки с упражнениями
-  const res = await db.query(
-    `select * from result_table where date = $1 and telegram_id = $2`,
-    [date, telegram_id]
-  );
-  // Сформировать список(можно не список) с уникальными упражнениями
-  console.log(res.rows[0]);
-});
+bot.callbackQuery(
+  "tstatistics",
+  statisticController.statisticUser.statisticToday.stepOne
+);
 // Статистика за определенный день
-bot.callbackQuery("dstatistic", async (ctx) => {
-  console.log(`Статистика за определенную дату`);
-  ctx.reply(
-    `Статистика за определенный день.\nВведите Дату в формате дд.мм.гггг:`
-  );
-  ctx.session.waitingForResponseCreateDate = true;
-});
+bot.callbackQuery(
+  "dstatistic",
+  statisticController.statisticUser.statisticDay.stepOne
+);
 
 // Статистика за месяц
 bot.callbackQuery("mstatistics", async (ctx) => {
-  ctx.reply("Ваша Статистика за месяц.");
+  ctx.reply("Статистика подготавливается...");
+  console.log(`Статистика за сегодняшнюю дату`);
 });
 
 // Статистика за период
 bot.callbackQuery("rstatistics", async (ctx) => {
+  ctx.reply("Статистика подготавливается...");
   ctx.reply(`Статистика за период`);
 });
 
